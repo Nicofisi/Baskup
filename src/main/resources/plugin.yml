@@ -1,0 +1,9 @@
+name: Baskup
+version: 0.1
+main: me.nicofisi.baskup.BaskupJava
+description: A script backupper for Skript
+authors: [Nicofisi]
+website: https://github.com/Nicofisi/Baskup
+depend: []
+softdepend: [Skript]
+loadbefore: []
