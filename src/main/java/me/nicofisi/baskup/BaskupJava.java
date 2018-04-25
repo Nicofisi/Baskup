@@ -1,9 +1,7 @@
 package me.nicofisi.baskup;
 
 import org.bukkit.Bukkit;
-import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class BaskupJava extends JavaPlugin implements Listener {

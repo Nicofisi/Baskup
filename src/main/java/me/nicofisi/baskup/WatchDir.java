@@ -29,12 +29,19 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+package me.nicofisi.baskup;
+
+import scala.Function2;
+import scala.Unit;
+
+import java.io.IOException;
 import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.HashMap;
+import java.util.Map;
+
+import static java.nio.file.LinkOption.NOFOLLOW_LINKS;
 import static java.nio.file.StandardWatchEventKinds.*;
-import static java.nio.file.LinkOption.*;
-import java.nio.file.attribute.*;
-import java.io.*;
-import java.util.*;
 
 /**
  * Example to watch a directory (or tree) for changes to files.
@@ -46,6 +53,7 @@ public class WatchDir {
     private final Map<WatchKey,Path> keys;
     private final boolean recursive;
     private boolean trace = false;
+    private final Function2<WatchEvent.Kind, Path, Unit> onEvent;
 
     @SuppressWarnings("unchecked")
     static <T> WatchEvent<T> cast(WatchEvent<?> event) {
@@ -90,15 +98,14 @@ public class WatchDir {
     /**
      * Creates a WatchService and registers the given directory
      */
-    WatchDir(Path dir, boolean recursive) throws IOException {
+    WatchDir(Path dir, boolean recursive, Function2<WatchEvent.Kind, Path, Unit> onEvent) throws IOException {
         this.watcher = FileSystems.getDefault().newWatchService();
         this.keys = new HashMap<>();
         this.recursive = recursive;
+        this.onEvent = onEvent;
 
         if (recursive) {
-            System.out.format("Scanning %s ...\n", dir);
             registerAll(dir);
-            System.out.println("Done.");
         } else {
             register(dir);
         }
@@ -140,8 +147,8 @@ public class WatchDir {
                 Path name = ev.context();
                 Path child = dir.resolve(name);
 
-                // print out event
-                System.out.format("%s: %s\n", event.kind().name(), child);
+                // apply the Scala function
+                onEvent.apply(ev.kind(), child);
 
                 // if directory is created, and watching recursively, then
                 // register it and its sub-directories
@@ -150,8 +157,8 @@ public class WatchDir {
                         if (Files.isDirectory(child, NOFOLLOW_LINKS)) {
                             registerAll(child);
                         }
-                    } catch (IOException x) {
-                        // ignore to keep sample readbale
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
                     }
                 }
             }
