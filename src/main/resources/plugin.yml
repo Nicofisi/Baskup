@@ -1,7 +1,11 @@
 name: Baskup
-version: 1.0
+version: 1.1
 main: me.nicofisi.baskup.BaskupJava
 description: A script backupper for Skript
 authors: [Nicofisi]
 website: https://github.com/Nicofisi/Baskup
 softdepend: [Skript]
+commands:
+  baskup:
+    aliases: [bsk]
+    description: The main command for baskup

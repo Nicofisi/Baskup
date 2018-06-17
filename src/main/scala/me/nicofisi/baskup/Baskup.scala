@@ -8,25 +8,18 @@ import java.util.Date
 import java.util.logging.Logger
 
 import org.bukkit.Bukkit
+import org.bukkit.scheduler.BukkitTask
 
 import scala.io.Source
 
-/* TODO config for:
- * - where to backup to
- * - backup file name pattern
- * - max amount of backups for each script
- * - delete backups older than X
- * - list of ignored scripts
- */
-
 object Baskup {
-  val plugin: BaskupJava = BaskupJava.get()
-  val logger: Logger = plugin.getLogger
+  val javaPlugin: BaskupJava = BaskupJava.get()
+  val logger: Logger = javaPlugin.getLogger
   var watcher: WatchService = _
-  var scriptsBackupDir: File = _
   var scriptsDir: File = _
   var scriptsPath: Path = _
   val fileNameDateFormat = new SimpleDateFormat("YYYY-MM-DD_HH-mm-ss")
+  var oldBackupsDeleteTask: Option[BukkitTask] = None
   private var shuttingDown = false
 
   /**
@@ -38,18 +31,22 @@ object Baskup {
     val skript = Bukkit.getPluginManager.getPlugin("Skript")
     if (skript == null) {
       logger.severe("Skript not found. Baskup won't do anything.")
-      plugin.setEnabledPublic(false)
+      javaPlugin.setEnabledPublic(false)
       return
     }
 
-    scriptsBackupDir = new File(skript.getDataFolder, "backups/scripts")
+    Config.reloadConfig()
 
-    scriptsDir = new File(skript.getDataFolder, "scripts") // maybe we could check if exists but actually it always should
+    javaPlugin.getCommand("baskup").setExecutor(BaskupCommand)
+
+    scriptsDir = new File(skriptDataFolder, "scripts")
     scriptsPath = scriptsDir.toPath
 
     Files.walkFileTree(scriptsPath, new SimpleFileVisitor[Path]() {
       override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
-        if (file.toString.toLowerCase.endsWith(".sk")) {
+        if (file.toString.toLowerCase.endsWith(".sk")
+          && (Config.confBackupWhitelist.isEmpty || Config.confBackupWhitelist.contains(file.toFile))
+          && (Config.confBackupBlacklist.isEmpty || !Config.confBackupBlacklist.contains(file.toFile))) {
           runBackup(file.toFile, ignoreIfSame = true)
         }
         FileVisitResult.CONTINUE
@@ -135,7 +132,7 @@ object Baskup {
     if (scriptFile.getAbsolutePath.toLowerCase.indexOf(".sk") != scriptFile.getAbsolutePath.length - 3) {
       None
     } else {
-      val backupDir = new File(scriptsBackupDir, relScriptPath.toString)
+      val backupDir = new File(Config.confBackupLocation, relScriptPath.toString)
       backupDir.mkdirs()
       Some(backupDir)
     }
