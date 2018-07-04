@@ -15,13 +15,13 @@ public class BaskupJava extends JavaPlugin implements Listener {
         }
     }
 
-    public static BaskupJava get() {
+    public static BaskupJava instance() {
         return instance;
     }
 
     @Override
     public void onEnable() {
-        Bukkit.getPluginManager().registerEvents(this, this);
+        Bukkit.getPluginManager().registerEvents(Baskup$.MODULE$, this);
 
         Baskup.onEnable();
     }
@@ -34,10 +34,4 @@ public class BaskupJava extends JavaPlugin implements Listener {
     public void onDisable() {
         Baskup.onDisable();
     }
-
-    // Event Handlers
-    //
-    // Every method below needs to be annotated with @EventHandler and call Baskup.onEventName(event).
-    // We need this to be in Java because Spigot uses Java's reflection to call events, and Scala
-    // would require a different approach to reflection, which Spigot doesn't support
 }

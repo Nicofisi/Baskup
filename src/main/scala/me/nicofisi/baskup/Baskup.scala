@@ -5,16 +5,15 @@ import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.logging.Logger
 
+import me.nicofisi.commonspigotstuff._
 import org.bukkit.Bukkit
+import org.bukkit.event.Listener
 import org.bukkit.scheduler.BukkitTask
 
 import scala.io.Source
 
-object Baskup {
-  val javaPlugin: BaskupJava = BaskupJava.get()
-  val logger: Logger = javaPlugin.getLogger
+object Baskup extends Listener {
   var watcher: WatchService = _
   var scriptsDir: File = _
   var scriptsPath: Path = _
@@ -22,22 +21,27 @@ object Baskup {
   var oldBackupsDeleteTask: Option[BukkitTask] = None
   private var shuttingDown = false
 
+  implicit val pluginInfo: PluginInfo = PluginInfo(
+    plugin = BaskupJava.instance,
+    primaryColor = 'e',
+    secondaryColor = '7'
+  )
+
   /**
     * A file which at the moment contains only the path of the latest backup file
     */
   val DataFileName = ".baskup_data"
 
   def onEnable(): Unit = {
-    val skript = Bukkit.getPluginManager.getPlugin("Skript")
-    if (skript == null) {
-      logger.severe("Skript not found. Baskup won't do anything.")
-      javaPlugin.setEnabledPublic(false)
+    if (!pluginExists("Skript")) {
+      logError("Skript not found. Baskup won't do anything.")
+      BaskupJava.instance.setEnabledPublic(false)
       return
     }
 
     Config.reloadConfig()
 
-    javaPlugin.getCommand("baskup").setExecutor(BaskupCommand)
+    BaskupJava.instance.getCommand("baskup").setExecutor(BaskupCommandExecutor)
 
     scriptsDir = new File(skriptDataFolder, "scripts")
     scriptsPath = scriptsDir.toPath
@@ -64,7 +68,7 @@ object Baskup {
                 runBackup(path.toFile)
               } catch {
                 case ex: Exception =>
-                  logger.warning("An error has occurred while trying to backup " + path.toString)
+                  logWarning("An error has occurred while trying to backup " + path.toString)
                   ex.printStackTrace()
               }
             }
@@ -72,8 +76,8 @@ object Baskup {
       } catch {
         case ex: ClosedWatchServiceException =>
           if (!shuttingDown) {
-            logger.severe("The file update watcher has been unexpectedly closed.")
-            logger.severe("No further scripts will be backed up before a restart.")
+            logError("The file update watcher has been unexpectedly closed.")
+            logError("No further scripts will be backed up before a restart.")
             ex.printStackTrace()
           }
       }
@@ -81,6 +85,9 @@ object Baskup {
     t.setName("Baskup File Watcher Thread")
     t.start()
   }
+
+  /** Returns Skript#getDataFolder */
+  def skriptDataFolder: File = Bukkit.getPluginManager.getPlugin("Skript").getDataFolder
 
   /**
     * Backs the file up. Fails if the path of the script contains '.sk' somewhere before the end
@@ -103,14 +110,14 @@ object Baskup {
           }
         } catch {
           case ex: Exception =>
-            logger.warning("An error has occurred while checking whether "
+            logError("An error has occurred while checking whether "
               + scriptFile.getAbsolutePath + " needs to be backed up (it will be backed up regardless)")
             ex.printStackTrace()
         }
         val fileName = scriptFile.getName.dropRight(3) + "-" + fileNameDateFormat.format(new Date()) + ".sk"
         val backupFile = new File(scriptBackupDir, fileName)
         if (backupFile.exists()) {
-          logger.warning(s"${backupFile.getAbsolutePath} somehow already exists, " +
+          logWarning(s"${backupFile.getAbsolutePath} somehow already exists, " +
             s"so ${scriptFile.getAbsolutePath} won't be backed up this time")
         } else {
           Files.copy(scriptFile.toPath, backupFile.toPath)
@@ -123,7 +130,7 @@ object Baskup {
   }
 
   def warnAboutDotSkBeforeEnd(scriptFile: File): Unit =
-    logger.warning(s"The path of ${scriptFile.getAbsolutePath} contains '.sk' somewhere before the end. "
+    logWarning(s"The path of ${scriptFile.getAbsolutePath} contains '.sk' somewhere before the end. "
       + "The script won't be backed up until you fix this by renaming either the script "
       + "or one of the parent directories, whichever needed")
 
